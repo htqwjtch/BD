@@ -26,15 +26,20 @@ use utoipa::OpenApi;
         models::Patient,
         models::NewPatient,
         models::OptionPatient,
+        models::UpdatePatient,
         models::Doctor,
         models::NewDoctor,
         models::OptionDoctor,
+        models::UpdateDoctor,
         models::Ticket,
         models::NewTicket,
         models::OptionTicket,
+        models::UpdateTicket,
         models::ScheduleEntry,
         models::NewScheduleEntry,
         models::OptionScheduleEntry,
+        models::UpdateScheduleEntry,
+        models::FullScheduleEntry,
     ))
 )]
 pub struct ApiDoc;

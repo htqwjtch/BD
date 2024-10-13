@@ -1,23 +1,45 @@
 use crate::models::{
-    Doctor, NewDoctor, NewPatient, NewScheduleEntry, NewTicket, OptionDoctor, OptionPatient,
-    OptionScheduleEntry, OptionTicket, Patient, ScheduleEntry, Ticket,
+    Doctor, FullScheduleEntry, NewDoctor, NewPatient, NewScheduleEntry, NewTicket, OptionDoctor,
+    OptionPatient, OptionScheduleEntry, OptionTicket, Patient, ScheduleEntry, Ticket, UpdateDoctor,
+    UpdatePatient, UpdateScheduleEntry, UpdateTicket,
 };
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use sqlx::PgPool;
 
 #[utoipa::path(
     get,
-    path = "/patients/select/all",
+    path = "/patients/select",
     responses(
         (status = 200, description = "List of patients", body = [Patient])
+    ),
+    params(
+        ("patient" = OptionPatient, Query, description = "Optional filters")
     )
 )]
-#[get("/patients/select/all")]
-pub async fn get_patients(pool: web::Data<PgPool>) -> impl Responder {
-    let rows = sqlx::query_as!(Patient, "SELECT * FROM patients")
-        .fetch_all(pool.get_ref())
-        .await
-        .unwrap();
+#[get("/patients/select")]
+pub async fn get_patients(
+    pool: web::Data<PgPool>,
+    option_patient: web::Query<OptionPatient>,
+) -> impl Responder {
+    let rows = sqlx::query_as!(
+        Patient,
+        "SELECT * 
+        FROM patients
+        WHERE 
+            (COALESCE($1, '') = '' OR name = $1) AND
+            (COALESCE($2, '') = '' OR surname = $2) AND
+            (COALESCE($3, '') = '' OR birth_date = $3) AND
+            (COALESCE($4, '') = '' OR phone_number = $4) AND
+            (COALESCE($5, '') = '' OR passport_number = $5);",
+        option_patient.name,
+        option_patient.surname,
+        option_patient.birth_date,
+        option_patient.phone_number,
+        option_patient.passport_number,
+    )
+    .fetch_all(pool.get_ref())
+    .await
+    .unwrap();
 
     web::Json(rows)
 }
@@ -66,21 +88,17 @@ pub async fn add_patient(
 
 #[utoipa::path(
     patch,
-    path = "/patients/update/{id}",
-    params(
-        ("id" = i32, Path, description = "Patient ID")
-    ),
-    request_body = OptionPatient,
+    path = "/patients/update",
+    request_body = UpdatePatient,
     responses(
         (status = 200, description = "Entry successfully updated"),
         (status = 404, description = "Entry not found"),
     )
 )]
-#[patch("/patients/update/{id}")]
+#[patch("/patients/update")]
 pub async fn update_patient(
     pool: web::Data<PgPool>,
-    patient_id: web::Path<i32>,
-    option_patient: web::Json<OptionPatient>,
+    request: web::Json<UpdatePatient>,
 ) -> impl Responder {
     let result = sqlx::query!(
         r#"
@@ -90,14 +108,23 @@ pub async fn update_patient(
             birth_date = COALESCE($3, birth_date),
             phone_number = COALESCE($4, phone_number),
             passport_number = COALESCE($5, passport_number)
-        WHERE id = $6
+       WHERE 
+            ($6::TEXT IS NULL OR name = $6) AND
+            ($7::TEXT IS NULL OR surname = $7) AND
+            ($8::TEXT IS NULL OR birth_date = $8) AND
+            ($9::TEXT IS NULL OR phone_number = $9) AND
+            ($10::TEXT IS NULL OR passport_number = $10);
         "#,
-        option_patient.name,
-        option_patient.surname,
-        option_patient.birth_date,
-        option_patient.phone_number,
-        option_patient.passport_number,
-        *patient_id
+        request.update_name,
+        request.update_surname,
+        request.update_birth_date,
+        request.update_phone_number,
+        request.update_passport_number,
+        request.condition_name,
+        request.condition_surname,
+        request.condition_birth_date,
+        request.condition_phone_number,
+        request.condition_passport_number
     )
     .execute(pool.get_ref())
     .await;
@@ -110,26 +137,33 @@ pub async fn update_patient(
 
 #[utoipa::path(
     delete,
-    path = "/patients/delete/{id}",
-    params(
-        ("id" = i32, Path, description = "Patient ID")
-    ),
+    path = "/patients/delete",
+    request_body = OptionPatient,
     responses(
         (status = 204, description = "Entry successfully deleted"),
         (status = 404, description = "Entry not found")
     )
 )]
-#[delete("/patients/delete/{id}")]
+#[delete("/patients/delete")]
 pub async fn delete_patient(
     pool: web::Data<sqlx::PgPool>,
-    patient_id: web::Path<i32>,
+    option_patient: web::Json<OptionPatient>,
 ) -> impl Responder {
     let result = sqlx::query!(
         r#"
         DELETE FROM patients
-        WHERE id = $1
+        WHERE 
+            (COALESCE($1, '') = '' OR name = $1) AND
+            (COALESCE($2, '') = '' OR surname = $2) AND
+            (COALESCE($3, '') = '' OR birth_date = $3) AND
+            (COALESCE($4, '') = '' OR phone_number = $4) AND
+            (COALESCE($5, '') = '' OR passport_number = $5);
         "#,
-        *patient_id
+        option_patient.name,
+        option_patient.surname,
+        option_patient.birth_date,
+        option_patient.phone_number,
+        option_patient.passport_number,
     )
     .execute(pool.get_ref())
     .await;
@@ -142,17 +176,39 @@ pub async fn delete_patient(
 
 #[utoipa::path(
     get,
-    path = "/doctors/select/all",
+    path = "/doctors/select",
     responses(
         (status = 200, description = "List of doctors", body = [Doctor])
+    ),
+    params(
+        ("doctor" = OptionDoctor, Query, description = "Optional filters")
     )
+    
 )]
-#[get("/doctors/select/all")]
-pub async fn get_doctors(pool: web::Data<PgPool>) -> impl Responder {
-    let rows = sqlx::query_as!(Doctor, "SELECT * FROM doctors")
-        .fetch_all(pool.get_ref())
-        .await
-        .unwrap();
+#[get("/doctors/select")]
+pub async fn get_doctors(
+    pool: web::Data<PgPool>,
+    option_doctor: web::Query<OptionDoctor>
+) -> impl Responder {
+    let rows = sqlx::query_as!(
+        Doctor,
+        "SELECT * 
+        FROM doctors
+        WHERE 
+            (COALESCE($1, '') = '' OR name = $1) AND
+            (COALESCE($2, '') = '' OR surname = $2) AND
+            (COALESCE($3, '') = '' OR speciality = $3) AND
+            (COALESCE($4, '') = '' OR phone_number = $4) AND
+            (COALESCE($5, '') = '' OR passport_number = $5);",
+        option_doctor.name,
+        option_doctor.surname,
+        option_doctor.speciality,
+        option_doctor.phone_number,
+        option_doctor.passport_number,
+    )
+    .fetch_all(pool.get_ref())
+    .await
+    .unwrap();
 
     web::Json(rows)
 }
@@ -201,21 +257,17 @@ pub async fn add_doctor(
 
 #[utoipa::path(
     patch,
-    path = "/doctors/update/{id}",
-    params(
-        ("id" = i32, Path, description = "Doctor ID")
-    ),
-    request_body = OptionDoctor,
+    path = "/doctors/update",
+    request_body = UpdateDoctor,
     responses(
         (status = 200, description = "Entry successfully updated"),
         (status = 404, description = "Entry not found"),
     )
 )]
-#[patch("/doctors/update/{id}")]
+#[patch("/doctors/update")]
 pub async fn update_doctor(
     pool: web::Data<PgPool>,
-    doctor_id: web::Path<i32>,
-    option_doctor: web::Json<OptionDoctor>,
+    request: web::Json<UpdateDoctor>,
 ) -> impl Responder {
     let result = sqlx::query!(
         r#"
@@ -225,14 +277,23 @@ pub async fn update_doctor(
             speciality = COALESCE($3, speciality),
             phone_number = COALESCE($4, phone_number),
             passport_number = COALESCE($5, passport_number)
-        WHERE id = $6
+       WHERE 
+            ($6::TEXT IS NULL OR name = $6) AND
+            ($7::TEXT IS NULL OR surname = $7) AND
+            ($8::TEXT IS NULL OR speciality = $8) AND
+            ($9::TEXT IS NULL OR phone_number = $9) AND
+            ($10::TEXT IS NULL OR passport_number = $10);
         "#,
-        option_doctor.name,
-        option_doctor.surname,
-        option_doctor.speciality,
-        option_doctor.phone_number,
-        option_doctor.passport_number,
-        *doctor_id
+        request.update_name,
+        request.update_surname,
+        request.update_speciality,
+        request.update_phone_number,
+        request.update_passport_number,
+        request.condition_name,
+        request.condition_surname,
+        request.condition_speciality,
+        request.condition_phone_number,
+        request.condition_passport_number
     )
     .execute(pool.get_ref())
     .await;
@@ -245,26 +306,33 @@ pub async fn update_doctor(
 
 #[utoipa::path(
     delete,
-    path = "/doctors/delete/{id}",
-    params(
-        ("id" = i32, Path, description = "Doctor ID")
-    ),
+    path = "/doctors/delete",
+    request_body = OptionDoctor,
     responses(
         (status = 204, description = "Entry successfully deleted"),
         (status = 404, description = "Entry not found")
     )
 )]
-#[delete("/doctors/delete/{id}")]
+#[delete("/doctors/delete")]
 pub async fn delete_doctor(
     pool: web::Data<sqlx::PgPool>,
-    doctor_id: web::Path<i32>,
+    option_doctor: web::Json<OptionDoctor>,
 ) -> impl Responder {
     let result = sqlx::query!(
         r#"
-        DELETE FROM patients
-        WHERE id = $1
+        DELETE FROM doctors
+        WHERE 
+            (COALESCE($1, '') = '' OR name = $1) AND
+            (COALESCE($2, '') = '' OR surname = $2) AND
+            (COALESCE($3, '') = '' OR speciality = $3) AND
+            (COALESCE($4, '') = '' OR phone_number = $4) AND
+            (COALESCE($5, '') = '' OR passport_number = $5);
         "#,
-        *doctor_id
+        option_doctor.name,
+        option_doctor.surname,
+        option_doctor.speciality,
+        option_doctor.phone_number,
+        option_doctor.passport_number,
     )
     .execute(pool.get_ref())
     .await;
@@ -277,17 +345,34 @@ pub async fn delete_doctor(
 
 #[utoipa::path(
     get,
-    path = "/tickets/select/all",
+    path = "/tickets/select",
     responses(
         (status = 200, description = "List of tickets", body = [Ticket])
+    ),
+    params(
+        ("ticket" = OptionTicket, Query, description = "Optional filters")
     )
 )]
-#[get("/tickets/select/all")]
-pub async fn get_tickets(pool: web::Data<PgPool>) -> impl Responder {
-    let rows = sqlx::query_as!(Ticket, "SELECT * FROM tickets")
-        .fetch_all(pool.get_ref())
-        .await
-        .unwrap();
+#[get("/tickets/select")]
+pub async fn get_tickets(
+    pool: web::Data<PgPool>,
+    option_ticket: web::Query<OptionTicket>
+) -> impl Responder {
+    let rows = sqlx::query_as!(
+        Ticket,
+        "SELECT * 
+        FROM tickets
+        WHERE 
+            (COALESCE($1, '') = '' OR date = $1) AND
+            (COALESCE($2, '') = '' OR time = $2) AND
+            (COALESCE($3, 0) = 0 OR office_number = $3);",
+        option_ticket.date,
+        option_ticket.time,
+        option_ticket.office_number
+    )
+    .fetch_all(pool.get_ref())
+    .await
+    .unwrap();
 
     web::Json(rows)
 }
@@ -332,21 +417,17 @@ pub async fn add_ticket(
 
 #[utoipa::path(
     patch,
-    path = "/tickets/update/{id}",
-    params(
-        ("id" = i32, Path, description = "Ticket ID")
-    ),
-    request_body = OptionTicket,
+    path = "/tickets/update",
+    request_body = UpdateTicket,
     responses(
         (status = 200, description = "Entry successfully updated"),
         (status = 404, description = "Entry not found"),
     )
 )]
-#[patch("/tickets/update/{id}")]
+#[patch("/tickets/update")]
 pub async fn update_ticket(
     pool: web::Data<PgPool>,
-    ticket_id: web::Path<i32>,
-    option_ticket: web::Json<OptionTicket>,
+    request: web::Json<UpdateTicket>,
 ) -> impl Responder {
     let result = sqlx::query!(
         r#"
@@ -354,12 +435,17 @@ pub async fn update_ticket(
         SET date = COALESCE($1, date),
             time = COALESCE($2, time),
             office_number = COALESCE($3, office_number)
-        WHERE id = $4
+       WHERE 
+            ($4::TEXT IS NULL OR date = $4) AND
+            ($5::TEXT IS NULL OR time = $5) AND
+            ($6::INT IS NULL OR office_number = $6);
         "#,
-        option_ticket.date,
-        option_ticket.time,
-        option_ticket.office_number,
-        *ticket_id
+        request.update_date,
+        request.update_time,
+        request.update_office_number,
+        request.condition_date,
+        request.condition_time,
+        request.condition_office_number,
     )
     .execute(pool.get_ref())
     .await;
@@ -372,26 +458,29 @@ pub async fn update_ticket(
 
 #[utoipa::path(
     delete,
-    path = "/tickets/delete/{id}",
-    params(
-        ("id" = i32, Path, description = "Ticket ID")
-    ),
+    path = "/tickets/delete",
+    request_body = OptionTicket,
     responses(
         (status = 204, description = "Entry successfully deleted"),
         (status = 404, description = "Entry not found")
     )
 )]
-#[delete("/tickets/delete/{id}")]
+#[delete("/tickets/delete")]
 pub async fn delete_ticket(
     pool: web::Data<sqlx::PgPool>,
-    ticket_id: web::Path<i32>,
+    option_ticket: web::Json<OptionTicket>,
 ) -> impl Responder {
     let result = sqlx::query!(
         r#"
         DELETE FROM tickets
-        WHERE id = $1
+        WHERE 
+            (COALESCE($1, '') = '' OR date = $1) AND
+            (COALESCE($2, '') = '' OR time = $2) AND
+            (COALESCE($3, 0) = 0 OR office_number = $3);
         "#,
-        *ticket_id
+        option_ticket.date,
+        option_ticket.time,
+        option_ticket.office_number,
     )
     .execute(pool.get_ref())
     .await;
@@ -404,17 +493,42 @@ pub async fn delete_ticket(
 
 #[utoipa::path(
     get,
-    path = "/schedule/select/all",
+    path = "/schedule/select",
     responses(
-        (status = 200, description = "Schedule", body = [ScheduleEntry])
+        (status = 200, description = "Schedule", body = [FullScheduleEntry])
+    ),
+    params(
+        ("schedule entry" = OptionScheduleEntry, Query, description = "Optional filters")
     )
 )]
-#[get("/schedule/select/all")]
-pub async fn get_schedule(pool: web::Data<PgPool>) -> impl Responder {
-    let rows = sqlx::query_as!(ScheduleEntry, "SELECT * FROM schedule")
-        .fetch_all(pool.get_ref())
-        .await
-        .unwrap();
+#[get("/schedule/select")]
+pub async fn get_schedule(
+    pool: web::Data<PgPool>,
+    option_schedule_entry: web::Query<OptionScheduleEntry>
+) -> impl Responder {
+    let rows = sqlx::query_as!(
+        FullScheduleEntry,
+        "SELECT schedule.id as schedule_id, tickets.id as ticket_id, doctors.id as doctor_id, patients.id as patient_id,
+        tickets.date as ticket_date, tickets.time as ticket_time, tickets.office_number as ticket_office_number,
+        doctors.name as doctor_name, doctors.surname as doctor_surname, doctors.speciality as doctor_speciality,
+        doctors.phone_number as doctor_phone_number, doctors.passport_number as doctor_passport_number,
+        patients.name as patient_name, patients.surname as patient_surname, patients.birth_date as patient_birth_date,
+        patients.phone_number as patient_phone_number, patients.passport_number as patient_passport_number
+        FROM schedule
+        JOIN tickets ON schedule.ticket_id = tickets.id
+        JOIN doctors ON schedule.doctor_id = doctors.id
+        JOIN patients ON schedule.patient_id = patients.id
+        WHERE 
+            (COALESCE($1, 0) = 0 OR ticket_id = $1) AND
+            (COALESCE($2, 0) = 0 OR doctor_id = $2) AND
+            (COALESCE($3, 0) = 0 OR patient_id = $3);",
+        option_schedule_entry.ticket_id,
+        option_schedule_entry.doctor_id,
+        option_schedule_entry.patient_id
+    )
+    .fetch_all(pool.get_ref())
+    .await
+    .unwrap();
 
     web::Json(rows)
 }
@@ -422,9 +536,9 @@ pub async fn get_schedule(pool: web::Data<PgPool>) -> impl Responder {
 #[utoipa::path(
     post,
     path = "/schedule/add",
-    request_body = NewTicket,
+    request_body = NewScheduleEntry,
     responses(
-        (status = 201, description = "Entry successfully created", body = Ticket),
+        (status = 201, description = "Entry successfully created", body = ScheduleEntry),
         (status = 400, description = "Invalid input")
     )
 )]
@@ -459,21 +573,17 @@ pub async fn add_schedule_entry(
 
 #[utoipa::path(
     patch,
-    path = "/schedule/update/{id}",
-    params(
-        ("id" = i32, Path, description = "Schedule Enrty ID")
-    ),
-    request_body = OptionScheduleEntry,
+    path = "/schedule/update",
+    request_body = UpdateScheduleEntry,
     responses(
         (status = 200, description = "Entry successfully updated"),
         (status = 404, description = "Entry not found"),
     )
 )]
-#[patch("/schedule/update/{id}")]
+#[patch("/schedule/update")]
 pub async fn update_schedule_entry(
     pool: web::Data<PgPool>,
-    schedule_entry_id: web::Path<i32>,
-    option_schedule_entry: web::Json<OptionScheduleEntry>,
+    request: web::Json<UpdateScheduleEntry>,
 ) -> impl Responder {
     let result = sqlx::query!(
         r#"
@@ -481,12 +591,17 @@ pub async fn update_schedule_entry(
         SET ticket_id = COALESCE($1, ticket_id),
             doctor_id = COALESCE($2, doctor_id),
             patient_id = COALESCE($3, patient_id)
-        WHERE id = $4
+       WHERE 
+            ($4::INT IS NULL OR ticket_id = $4) AND
+            ($5::INT IS NULL OR doctor_id = $5) AND
+            ($6::INT IS NULL OR patient_id = $6);
         "#,
-        option_schedule_entry.ticket_id,
-        option_schedule_entry.doctor_id,
-        option_schedule_entry.patient_id,
-        *schedule_entry_id
+        request.update_ticket_id,
+        request.update_doctor_id,
+        request.update_patient_id,
+        request.condition_ticket_id,
+        request.condition_doctor_id,
+        request.condition_patient_id,
     )
     .execute(pool.get_ref())
     .await;
@@ -499,26 +614,29 @@ pub async fn update_schedule_entry(
 
 #[utoipa::path(
     delete,
-    path = "/schedule/delete/{id}",
-    params(
-        ("id" = i32, Path, description = "Schedule Entry ID")
-    ),
+    path = "/schedule/delete",
+    request_body = OptionScheduleEntry,
     responses(
         (status = 204, description = "Entry successfully deleted"),
         (status = 404, description = "Entry not found")
     )
 )]
-#[delete("/schedule/delete/{id}")]
+#[delete("/schedule/delete")]
 pub async fn delete_schedule_entry(
     pool: web::Data<sqlx::PgPool>,
-    schedule_entry_id: web::Path<i32>,
+    option_schedule_entry: web::Json<OptionScheduleEntry>,
 ) -> impl Responder {
     let result = sqlx::query!(
         r#"
         DELETE FROM schedule
-        WHERE id = $1
+        WHERE 
+            (COALESCE($1, 0) = 0 OR ticket_id = $1) AND
+            (COALESCE($2, 0) = 0 OR doctor_id = $2) AND
+            (COALESCE($3, 0) = 0 OR patient_id = $3);
         "#,
-        *schedule_entry_id
+        option_schedule_entry.ticket_id,
+        option_schedule_entry.doctor_id,
+        option_schedule_entry.patient_id
     )
     .execute(pool.get_ref())
     .await;
