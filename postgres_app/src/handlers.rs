@@ -8,7 +8,8 @@ use sqlx::PgPool;
 
 #[utoipa::path(
     get,
-    path = "/patients/select",
+    path = "/patients",
+    tag = "Patients",
     responses(
         (status = 200, description = "List of patients", body = [Patient])
     ),
@@ -16,7 +17,7 @@ use sqlx::PgPool;
         ("patient" = OptionPatient, Query, description = "Optional filters")
     )
 )]
-#[get("/patients/select")]
+#[get("/patients")]
 pub async fn get_patients(
     pool: web::Data<PgPool>,
     option_patient: web::Query<OptionPatient>,
@@ -46,14 +47,15 @@ pub async fn get_patients(
 
 #[utoipa::path(
     post,
-    path = "/patients/add",
+    path = "/patients",
+    tag = "Patients",
     request_body = NewPatient,
     responses(
         (status = 201, description = "Entry successfully created", body = Patient),
         (status = 400, description = "Invalid input")
     )
 )]
-#[post("/patients/add")]
+#[post("/patients")]
 pub async fn add_patient(
     pool: web::Data<sqlx::PgPool>,
     new_patient: web::Json<NewPatient>,
@@ -88,14 +90,15 @@ pub async fn add_patient(
 
 #[utoipa::path(
     patch,
-    path = "/patients/update",
+    path = "/patients",
+    tag = "Patients",
     request_body = UpdatePatient,
     responses(
         (status = 200, description = "Entry successfully updated"),
         (status = 404, description = "Entry not found"),
     )
 )]
-#[patch("/patients/update")]
+#[patch("/patients")]
 pub async fn update_patient(
     pool: web::Data<PgPool>,
     request: web::Json<UpdatePatient>,
@@ -137,14 +140,15 @@ pub async fn update_patient(
 
 #[utoipa::path(
     delete,
-    path = "/patients/delete",
+    path = "/patients",
+    tag = "Patients",
     request_body = OptionPatient,
     responses(
         (status = 204, description = "Entry successfully deleted"),
         (status = 404, description = "Entry not found")
     )
 )]
-#[delete("/patients/delete")]
+#[delete("/patients")]
 pub async fn delete_patient(
     pool: web::Data<sqlx::PgPool>,
     option_patient: web::Json<OptionPatient>,
@@ -176,7 +180,8 @@ pub async fn delete_patient(
 
 #[utoipa::path(
     get,
-    path = "/doctors/select",
+    path = "/doctors",
+    tag = "Doctors",
     responses(
         (status = 200, description = "List of doctors", body = [Doctor])
     ),
@@ -185,7 +190,7 @@ pub async fn delete_patient(
     )
     
 )]
-#[get("/doctors/select")]
+#[get("/doctors")]
 pub async fn get_doctors(
     pool: web::Data<PgPool>,
     option_doctor: web::Query<OptionDoctor>
@@ -215,14 +220,15 @@ pub async fn get_doctors(
 
 #[utoipa::path(
     post,
-    path = "/doctors/add",
+    path = "/doctors",
+    tag = "Doctors",
     request_body = NewDoctor,
     responses(
         (status = 201, description = "Entry successfully created", body = Doctor),
         (status = 400, description = "Invalid input")
     )
 )]
-#[post("/doctors/add")]
+#[post("/doctors")]
 pub async fn add_doctor(
     pool: web::Data<sqlx::PgPool>,
     new_doctor: web::Json<NewDoctor>,
@@ -257,14 +263,15 @@ pub async fn add_doctor(
 
 #[utoipa::path(
     patch,
-    path = "/doctors/update",
+    path = "/doctors",
+    tag = "Doctors",
     request_body = UpdateDoctor,
     responses(
         (status = 200, description = "Entry successfully updated"),
         (status = 404, description = "Entry not found"),
     )
 )]
-#[patch("/doctors/update")]
+#[patch("/doctors")]
 pub async fn update_doctor(
     pool: web::Data<PgPool>,
     request: web::Json<UpdateDoctor>,
@@ -306,14 +313,15 @@ pub async fn update_doctor(
 
 #[utoipa::path(
     delete,
-    path = "/doctors/delete",
+    path = "/doctors",
+    tag = "Doctors",
     request_body = OptionDoctor,
     responses(
         (status = 204, description = "Entry successfully deleted"),
         (status = 404, description = "Entry not found")
     )
 )]
-#[delete("/doctors/delete")]
+#[delete("/doctors")]
 pub async fn delete_doctor(
     pool: web::Data<sqlx::PgPool>,
     option_doctor: web::Json<OptionDoctor>,
@@ -345,7 +353,8 @@ pub async fn delete_doctor(
 
 #[utoipa::path(
     get,
-    path = "/tickets/select",
+    path = "/tickets",
+    tag = "Tickets",
     responses(
         (status = 200, description = "List of tickets", body = [Ticket])
     ),
@@ -353,7 +362,7 @@ pub async fn delete_doctor(
         ("ticket" = OptionTicket, Query, description = "Optional filters")
     )
 )]
-#[get("/tickets/select")]
+#[get("/tickets")]
 pub async fn get_tickets(
     pool: web::Data<PgPool>,
     option_ticket: web::Query<OptionTicket>
@@ -379,14 +388,15 @@ pub async fn get_tickets(
 
 #[utoipa::path(
     post,
-    path = "/tickets/add",
+    path = "/tickets",
+    tag = "Tickets",
     request_body = NewTicket,
     responses(
         (status = 201, description = "Entry successfully created", body = Ticket),
         (status = 400, description = "Invalid input")
     )
 )]
-#[post("/tickets/add")]
+#[post("/tickets")]
 pub async fn add_ticket(
     pool: web::Data<sqlx::PgPool>,
     new_ticket: web::Json<NewTicket>,
@@ -417,14 +427,15 @@ pub async fn add_ticket(
 
 #[utoipa::path(
     patch,
-    path = "/tickets/update",
+    path = "/tickets",
+    tag = "Tickets",
     request_body = UpdateTicket,
     responses(
         (status = 200, description = "Entry successfully updated"),
         (status = 404, description = "Entry not found"),
     )
 )]
-#[patch("/tickets/update")]
+#[patch("/tickets")]
 pub async fn update_ticket(
     pool: web::Data<PgPool>,
     request: web::Json<UpdateTicket>,
@@ -458,14 +469,15 @@ pub async fn update_ticket(
 
 #[utoipa::path(
     delete,
-    path = "/tickets/delete",
+    path = "/tickets",
+    tag = "Tickets",
     request_body = OptionTicket,
     responses(
         (status = 204, description = "Entry successfully deleted"),
         (status = 404, description = "Entry not found")
     )
 )]
-#[delete("/tickets/delete")]
+#[delete("/tickets")]
 pub async fn delete_ticket(
     pool: web::Data<sqlx::PgPool>,
     option_ticket: web::Json<OptionTicket>,
@@ -493,7 +505,8 @@ pub async fn delete_ticket(
 
 #[utoipa::path(
     get,
-    path = "/schedule/select",
+    path = "/schedule",
+    tag = "Schedule",
     responses(
         (status = 200, description = "Schedule", body = [FullScheduleEntry])
     ),
@@ -501,7 +514,7 @@ pub async fn delete_ticket(
         ("schedule entry" = OptionScheduleEntry, Query, description = "Optional filters")
     )
 )]
-#[get("/schedule/select")]
+#[get("/schedule")]
 pub async fn get_schedule(
     pool: web::Data<PgPool>,
     option_schedule_entry: web::Query<OptionScheduleEntry>
@@ -535,14 +548,15 @@ pub async fn get_schedule(
 
 #[utoipa::path(
     post,
-    path = "/schedule/add",
+    path = "/schedule",
+    tag = "Schedule",
     request_body = NewScheduleEntry,
     responses(
         (status = 201, description = "Entry successfully created", body = ScheduleEntry),
         (status = 400, description = "Invalid input")
     )
 )]
-#[post("/schedule/add")]
+#[post("/schedule")]
 pub async fn add_schedule_entry(
     pool: web::Data<sqlx::PgPool>,
     new_schedule_entry: web::Json<NewScheduleEntry>,
@@ -573,14 +587,15 @@ pub async fn add_schedule_entry(
 
 #[utoipa::path(
     patch,
-    path = "/schedule/update",
+    path = "/schedule",
+    tag = "Schedule",
     request_body = UpdateScheduleEntry,
     responses(
         (status = 200, description = "Entry successfully updated"),
         (status = 404, description = "Entry not found"),
     )
 )]
-#[patch("/schedule/update")]
+#[patch("/schedule")]
 pub async fn update_schedule_entry(
     pool: web::Data<PgPool>,
     request: web::Json<UpdateScheduleEntry>,
@@ -614,14 +629,15 @@ pub async fn update_schedule_entry(
 
 #[utoipa::path(
     delete,
-    path = "/schedule/delete",
+    path = "/schedule",
+    tag = "Schedule",
     request_body = OptionScheduleEntry,
     responses(
         (status = 204, description = "Entry successfully deleted"),
         (status = 404, description = "Entry not found")
     )
 )]
-#[delete("/schedule/delete")]
+#[delete("/schedule")]
 pub async fn delete_schedule_entry(
     pool: web::Data<sqlx::PgPool>,
     option_schedule_entry: web::Json<OptionScheduleEntry>,

@@ -9,14 +9,17 @@ use utoipa::OpenApi;
         handlers::add_patient,
         handlers::update_patient,
         handlers::delete_patient,
+
         handlers::get_doctors,
         handlers::add_doctor,
         handlers::update_doctor,
         handlers::delete_doctor,
+
         handlers::get_tickets,
         handlers::add_ticket,
         handlers::update_ticket,
         handlers::delete_ticket,
+
         handlers::get_schedule,
         handlers::add_schedule_entry,
         handlers::update_schedule_entry,
@@ -40,6 +43,12 @@ use utoipa::OpenApi;
         models::OptionScheduleEntry,
         models::UpdateScheduleEntry,
         models::FullScheduleEntry,
-    ))
+    )),
+    tags(
+        (name = "Patients", description = "Operations related to relation \"patients\""),
+        (name = "Doctors", description = "Operations related to relation \"doctors\""),
+        (name = "Tickets", description = "Operations related to relation \"tickets\""),
+        (name = "Schedule", description = "Operations related to relation \"schedule\"")
+    )
 )]
 pub struct ApiDoc;
