@@ -178,6 +178,93 @@ pub async fn delete_patient(
     }
 }
 
+
+#[utoipa::path(
+    get,
+    path = "/patients/export",
+    tag = "Patients",
+    responses(
+        (status = 200, description = "Exported number of patients", body = [Patient])
+    ),
+)]
+#[get("/patients/export")]
+pub async fn export_patients(
+    pool: web::Data<PgPool>,
+    sled_db: web::Data<sled::Db>,
+) -> impl Responder {
+    let patients = sqlx::query_as!(
+        Patient,
+        "SELECT id, name, surname, birth_date, phone_number, passport_number FROM patients"
+    )
+    .fetch_all(pool.get_ref())
+    .await;
+
+    match patients {
+        Ok(patients) => {
+            for patient in &patients {
+                let key = format!("patient:{}", patient.id);
+                let value = serde_json::to_vec(patient).unwrap();
+                
+                sled_db.insert(key, value).expect("Не удалось вставить данные в Sled");
+            }
+            let mut count = 0;
+            sled_db.scan_prefix("").for_each(|item| {
+            if let Ok(_) = item {
+                count += 1;
+            }
+            });
+            HttpResponse::Ok().body(format!("Экспортировано {} пациентов в Sled", count))
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Не удалось получить данные пациентов из PostgreSQL"),
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/patients/import",
+    tag = "Patients",
+    responses(
+        (status = 200, description = "Patients imported successfully"),
+        (status = 500, description = "Failed to import patients"),
+    ),
+)]
+#[post("/patients/import")]
+pub async fn import_patients(
+    pool: web::Data<PgPool>,
+    sled_db: web::Data<sled::Db>,
+) -> impl Responder {
+    let mut count = 0;
+
+    let iter = sled_db.iter();
+
+    for item in iter {
+        if let Ok((_, value)) = item {
+            let patient: Patient = serde_json::from_slice(&value).unwrap();
+            let insert_query = sqlx::query!(
+                "INSERT INTO patients (id, name, surname, birth_date, phone_number, passport_number) VALUES ($1, $2, $3, $4, $5, $6)",
+                patient.id,
+                patient.name,
+                patient.surname,
+                patient.birth_date,
+                patient.phone_number,
+                patient.passport_number
+            );
+
+            if let Err(e) = insert_query.execute(pool.get_ref()).await {
+                eprintln!("Не удалось вставить пациента с id {}: {:?}", patient.id, e);
+            } else {
+                count += 1;
+            }
+        }
+    }
+
+    HttpResponse::Ok().body(format!("Импортировано {} пациентов из Sled", count))
+}
+
+
+
+
+
 #[utoipa::path(
     get,
     path = "/doctors",
@@ -353,6 +440,89 @@ pub async fn delete_doctor(
 
 #[utoipa::path(
     get,
+    path = "/doctors/export",
+    tag = "Doctors",
+    responses(
+        (status = 200, description = "Exported number of doctors", body = [Doctor])
+    ),
+)]
+#[get("/doctors/export")]
+pub async fn export_doctors(
+    pool: web::Data<PgPool>,
+    sled_db: web::Data<sled::Db>,
+) -> impl Responder {
+    let doctors = sqlx::query_as!(
+        Doctor,
+        "SELECT id, name, surname, speciality, phone_number, passport_number FROM doctors"
+    )
+    .fetch_all(pool.get_ref())
+    .await;
+
+    match doctors {
+        Ok(doctors) => {
+            for doctor in &doctors {
+                let key = format!("doctor:{}", doctor.id);
+                let value = serde_json::to_vec(doctor).unwrap();
+                
+                sled_db.insert(key, value).expect("Не удалось вставить данные в Sled");
+            }
+            let mut count = 0;
+            sled_db.scan_prefix("").for_each(|item| {
+            if let Ok(_) = item {
+                count += 1;
+            }
+            });
+            HttpResponse::Ok().body(format!("Экспортировано {} докторов в Sled", count))
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Не удалось получить данные докторов из PostgreSQL"),
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/doctors/import",
+    tag = "Doctors",
+    responses(
+        (status = 200, description = "Doctors imported successfully"),
+        (status = 500, description = "Failed to import doctors"),
+    ),
+)]
+#[post("/doctors/import")]
+pub async fn import_doctors(
+    pool: web::Data<PgPool>,
+    sled_db: web::Data<sled::Db>,
+) -> impl Responder {
+    let mut count = 0;
+
+    let iter = sled_db.iter();
+
+    for item in iter {
+        if let Ok((_, value)) = item {
+            let doctor: Doctor = serde_json::from_slice(&value).unwrap();
+            let insert_query = sqlx::query!(
+                "INSERT INTO doctors (id, name, surname, speciality, phone_number, passport_number) VALUES ($1, $2, $3, $4, $5, $6)",
+                doctor.id,
+                doctor.name,
+                doctor.surname,
+                doctor.speciality,
+                doctor.phone_number,
+                doctor.passport_number
+            );
+
+            if let Err(e) = insert_query.execute(pool.get_ref()).await {
+                eprintln!("Не удалось вставить доктора с id {}: {:?}", doctor.id, e);
+            } else {
+                count += 1;
+            }
+        }
+    }
+
+    HttpResponse::Ok().body(format!("Импортировано {} докторов из Sled", count))
+}
+
+
+#[utoipa::path(
+    get,
     path = "/tickets",
     tag = "Tickets",
     responses(
@@ -501,6 +671,86 @@ pub async fn delete_ticket(
         Ok(rows) if rows.rows_affected() > 0 => HttpResponse::NoContent().finish(),
         _ => HttpResponse::NotFound().body("Entry not found"),
     }
+}
+
+#[utoipa::path(
+    get,
+    path = "/tickets/export",
+    tag = "Tickets",
+    responses(
+        (status = 200, description = "Exported number of tickets", body = [Ticket])
+    ),
+)]
+#[get("/tickets/export")]
+pub async fn export_tickets(
+    pool: web::Data<PgPool>,
+    sled_db: web::Data<sled::Db>,
+) -> impl Responder {
+    let tickets = sqlx::query_as!(
+        Ticket,
+        "SELECT id, date, time, office_number FROM tickets"
+    )
+    .fetch_all(pool.get_ref())
+    .await;
+
+    match tickets {
+        Ok(tickets) => {
+            for ticket in &tickets {
+                let key = format!("ticket:{}", ticket.id);
+                let value = serde_json::to_vec(ticket).unwrap();
+                
+                sled_db.insert(key, value).expect("Не удалось вставить данные в Sled");
+            }
+            let mut count = 0;
+            sled_db.scan_prefix("").for_each(|item| {
+            if let Ok(_) = item {
+                count += 1;
+            }
+            });
+            HttpResponse::Ok().body(format!("Экспортировано {} талонов в Sled", count))
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Не удалось получить данные талонов из PostgreSQL"),
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/tickets/import",
+    tag = "Tickets",
+    responses(
+        (status = 200, description = "Tickets imported successfully"),
+        (status = 500, description = "Failed to import tickets"),
+    ),
+)]
+#[post("/tickets/import")]
+pub async fn import_tickets(
+    pool: web::Data<PgPool>,
+    sled_db: web::Data<sled::Db>,
+) -> impl Responder {
+    let mut count = 0;
+
+    let iter = sled_db.iter();
+
+    for item in iter {
+        if let Ok((_, value)) = item {
+            let ticket: Ticket = serde_json::from_slice(&value).unwrap();
+            let insert_query = sqlx::query!(
+                "INSERT INTO tickets (id, date, time, office_number) VALUES ($1, $2, $3, $4)",
+                ticket.id,
+                ticket.date,
+                ticket.time,
+                ticket.office_number
+            );
+
+            if let Err(e) = insert_query.execute(pool.get_ref()).await {
+                eprintln!("Не удалось вставить данные талонов с id {}: {:?}", ticket.id, e);
+            } else {
+                count += 1;
+            }
+        }
+    }
+
+    HttpResponse::Ok().body(format!("Импортировано {} докторов из Sled", count))
 }
 
 #[utoipa::path(
@@ -661,4 +911,85 @@ pub async fn delete_schedule_entry(
         Ok(rows) if rows.rows_affected() > 0 => HttpResponse::NoContent().finish(),
         _ => HttpResponse::NotFound().body("Entry not found"),
     }
+}
+
+
+#[utoipa::path(
+    get,
+    path = "/schedule/export",
+    tag = "Schedule",
+    responses(
+        (status = 200, description = "Exported number of schedule entries", body = [ScheduleEntry])
+    ),
+)]
+#[get("/schedule/export")]
+pub async fn export_schedule(
+    pool: web::Data<PgPool>,
+    sled_db: web::Data<sled::Db>,
+) -> impl Responder {
+    let schedule_entries = sqlx::query_as!(
+        ScheduleEntry,
+        "SELECT id, ticket_id, doctor_id, patient_id FROM schedule"
+    )
+    .fetch_all(pool.get_ref())
+    .await;
+
+    match schedule_entries {
+        Ok(entries) => {
+            for entry in &entries {
+                let key = format!("entry:{}", entry.id);
+                let value = serde_json::to_vec(&entry).unwrap();
+                
+                sled_db.insert(key, value).expect("Не удалось вставить данные в Sled");
+            }
+            let mut count = 0;
+            sled_db.scan_prefix("").for_each(|item| {
+            if let Ok(_) = item {
+                count += 1;
+            }
+            });
+            HttpResponse::Ok().body(format!("Экспортировано {} записей расписания в Sled", count))
+        }
+        Err(_) => HttpResponse::InternalServerError().body("Не удалось получить данные записей расписания из PostgreSQL"),
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/schedule/import",
+    tag = "Schedule",
+    responses(
+        (status = 200, description = "Schedule imported successfully"),
+        (status = 500, description = "Failed to import Schedule"),
+    ),
+)]
+#[post("/schedule/import")]
+pub async fn import_schedule(
+    pool: web::Data<PgPool>,
+    sled_db: web::Data<sled::Db>,
+) -> impl Responder {
+    let mut count = 0;
+
+    let iter = sled_db.iter();
+
+    for item in iter {
+        if let Ok((_, value)) = item {
+            let schedule_entry: ScheduleEntry = serde_json::from_slice(&value).unwrap();
+            let insert_query = sqlx::query!(
+                "INSERT INTO schedule (id, ticket_id, doctor_id, patient_id) VALUES ($1, $2, $3, $4)",
+                schedule_entry.id,
+                schedule_entry.ticket_id,
+                schedule_entry.doctor_id,
+                schedule_entry.patient_id
+            );
+
+            if let Err(e) = insert_query.execute(pool.get_ref()).await {
+                eprintln!("Не удалось вставить запись расписания с id {}: {:?}", schedule_entry.id, e);
+            } else {
+                count += 1;
+            }
+        }
+    }
+
+    HttpResponse::Ok().body(format!("Импортировано {} записей расписания из Sled", count))
 }
